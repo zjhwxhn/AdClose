@@ -1,6 +1,5 @@
 package com.close.hook.ads.hook.ha
 
-import android.os.BaseBundle
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 import de.robv.android.xposed.XC_MethodReplacement
@@ -22,12 +21,10 @@ object SDKAdsKit {
         ContextUtil.addOnApplicationContextInitializedCallback {
             DexKitUtil.initializeDexKitBridge()
 
-            handlePangolinSDK()
             handlePangolinInit()
             handleGdtInit()
             handleAnyThinkSDK()
             blockFirebaseWithString()
-            blockAdsWithBaseBundle()
             blockAdsWithString()
             blockAdsWithPackageName()
 
@@ -51,19 +48,6 @@ object SDKAdsKit {
 
     private fun isValidMethodData(methodData: MethodData): Boolean {
         return methodData.methodName != "<init>"
-    }
-
-    fun handlePangolinSDK() {
-        hookMethodsByStringMatch(
-            "$packageName:handlePangolinSDK",
-            listOf("https://%s%s")
-        ) { method ->
-            if (method.declaringClass.name.startsWith("com.bytedance.sdk")) {
-                hookMethod(method, "after") { param ->
-                    param.result = null
-                }
-            }
-        }
     }
 
     fun handlePangolinInit() {
@@ -117,20 +101,6 @@ object SDKAdsKit {
         }
     }
 
-    fun blockAdsWithBaseBundle() {
-        findAndHookMethod(
-            BaseBundle::class.java,
-            "get",
-            arrayOf(String::class.java),
-            "after"
-        ) { param ->
-            val key = param.args[0] as? String
-            if ("com.google.android.gms.ads.APPLICATION_ID" == key) {
-                param.result = "ca-app-pub-0000000000000000~0000000000"
-            }
-        }
-    }
-
     fun blockAdsWithString() {
         hookMethodsByStringMatch(
             "$packageName:blockAdsWithString",
@@ -157,7 +127,8 @@ object SDKAdsKit {
             "com.tradplus.ads",
             "com.unity3d.services",
             "com.unity3d.ads",
-            "com.vungle.warren"
+            "com.vungle.warren",
+            "com.bytedance.sdk"
         )
 
         DexKitUtil.getCachedOrFindMethods("$packageName:blockAdsWithPackageName") {
@@ -177,6 +148,6 @@ object SDKAdsKit {
 
     private fun isValidAdMethod(methodData: MethodData): Boolean {
         return !Modifier.isAbstract(methodData.modifiers) &&
-               methodData.methodName in listOf("loadAd", "loadAds", "load", "show", "fetchAd", "initSDK")
+               methodData.methodName in listOf("loadAd", "loadAds", "load", "show", "fetchAd", "initSDK", "initialize", "initializeSdk")
     }
 }
